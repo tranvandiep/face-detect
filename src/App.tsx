@@ -31,6 +31,12 @@ export default function App() {
           analysis: liveAnalysis,
           capturedAt: new Date().toLocaleTimeString('vi-VN'),
         })
+
+        if (window.innerWidth <= 960) {
+          setTimeout(() => {
+            document.querySelector('.results-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 200)
+        }
       }
     },
     [liveAnalysis],

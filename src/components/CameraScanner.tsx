@@ -247,6 +247,7 @@ export default function CameraScanner({
               ref={videoRef}
               className={`camera-video ${facingMode === 'user' ? 'mirrored' : ''}`}
               playsInline
+              autoPlay
               muted
             />
             <FaceMeshOverlay
