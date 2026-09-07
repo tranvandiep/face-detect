@@ -66,3 +66,22 @@ export type SnapshotData = {
   analysis: FaceAnalysis
   capturedAt: string
 }
+
+export type RoomMember = {
+  id: string
+  name: string
+  avatar: string
+  status: 'waiting' | 'scanning' | 'done'
+  analysis?: FaceAnalysis | null
+  thumbnail?: string | null
+  joinedAt: number
+  isSelf?: boolean
+}
+
+export type GroupCompatibility = {
+  person1: RoomMember
+  person2: RoomMember
+  score: number // 0-100%
+  relation: 'Tương Sinh' | 'Tương Hợp' | 'Bình Hòa' | 'Tương Khắc'
+  description: string
+}
