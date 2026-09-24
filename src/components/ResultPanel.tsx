@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FaceAnalysis } from '../types'
 import { generateFortuneCard, downloadFortuneCard } from '../services/cardGenerator'
+import QRCodeModal from './QRCodeModal'
 
 type Props = {
   result: FaceAnalysis
@@ -11,6 +12,7 @@ export default function ResultPanel({ result, capturedImageSrc }: Props) {
   const [activeTab, setActiveTab] = useState<'nguHanh' | 'tyLe' | 'tuongSo' | 'theMayMan'>('nguHanh')
   const [isGeneratingCard, setIsGeneratingCard] = useState(false)
   const [cardPreviewUrl, setCardPreviewUrl] = useState<string | null>(null)
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false)
 
   const handleDownloadCard = async () => {
     try {
@@ -359,6 +361,13 @@ export default function ResultPanel({ result, capturedImageSrc }: Props) {
               >
                 🔄 Làm Mới Xem Trước
               </button>
+
+              <button
+                className="btn-action-pill btn-qr-share"
+                onClick={() => setIsQrModalOpen(true)}
+              >
+                📱 Quét QR Chia Sẻ & Mời Bạn Bè
+              </button>
             </div>
           </div>
         </div>
@@ -368,6 +377,15 @@ export default function ResultPanel({ result, capturedImageSrc }: Props) {
       <div className="disclaimer-modern">
         ℹ️ <b>Lưu ý:</b> Ứng dụng sử dụng công nghệ thị giác máy tính MediaPipe AI kết hợp kiến giải nhân tướng học truyền thống nhằm mang lại trải nghiệm giải trí và góc nhìn tích cực. Mọi quyết định trong cuộc sống luôn nằm ở bản lĩnh và sự nỗ lực của chính bạn!
       </div>
+
+      {/* Share QR Modal */}
+      <QRCodeModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        url={window.location.href}
+        title="Quét Mã QR Chia Sẻ Ứng Dụng"
+        subtitle="Mời bạn bè cùng quét diện mạo, xem quẻ tử vi và so khớp ngũ hành thời gian thực"
+      />
     </section>
   )
 }

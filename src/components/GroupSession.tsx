@@ -7,6 +7,8 @@ import {
   calculateCompatibility,
 } from '../services/groupP2P'
 import ResultPanel from './ResultPanel'
+import QRCodeDisplay from './QRCodeDisplay'
+import QRCodeModal from './QRCodeModal'
 
 const AVATARS = ['🦊', '🐯', '🐉', '🐱', '🦁', '🐼', '🦄', '🦅', '👑', '💎', '🔮', '✨']
 
@@ -49,8 +51,13 @@ export default function GroupSession({
   const [activeTab, setActiveTab] = useState<'members' | 'elements' | 'leaderboard'>('members')
   const [memberViewMode, setMemberViewMode] = useState<'table' | 'cards'>('table')
   const [selectedMemberDetail, setSelectedMemberDetail] = useState<RoomMember | null>(null)
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false)
   const [copyToast, setCopyToast] = useState(false)
   const [syncToast, setSyncToast] = useState(false)
+
+  const getRoomUrl = (roomId: string) => {
+    return `${window.location.origin}${window.location.pathname}#room=${encodeURIComponent(roomId.trim())}`
+  }
 
   // Self member object
   const selfMember = useMemo<RoomMember>(() => {
@@ -337,6 +344,26 @@ export default function GroupSession({
               🚀 Tham Gia / Tạo Phòng Ngay
             </button>
           </div>
+
+          {/* QR Code Quick Join on Mobile */}
+          <div className="lobby-box lobby-qr-box">
+            <h3>3. Quét QR Vào Nhanh Trên Điện Thoại</h3>
+            <p className="lobby-qr-tip">
+              Dùng camera điện thoại quét mã dưới đây để vào thẳng phòng <b>{roomIdInput || DEFAULT_ROOM_SUGGESTIONS[0]}</b>:
+            </p>
+            <div className="lobby-qr-center">
+              <QRCodeDisplay
+                value={getRoomUrl(roomIdInput || DEFAULT_ROOM_SUGGESTIONS[0])}
+                size={145}
+                roomName={roomIdInput || DEFAULT_ROOM_SUGGESTIONS[0]}
+                showCopyBtn={false}
+                showUrlPreview={false}
+              />
+            </div>
+            <span className="lobby-qr-hint">
+              ⚡ Người dùng khác quét mã là kết nối P2P tức thì không cần gõ mã!
+            </span>
+          </div>
         </div>
 
         <div className="p2p-badge-banner">
@@ -377,6 +404,14 @@ export default function GroupSession({
             title="Sao chép đường dẫn mời bạn bè vào phòng"
           >
             {copyToast ? '✅ Đã Copy Link!' : '🔗 Mời Bạn Bè'}
+          </button>
+          <button
+            type="button"
+            className="btn-action-pill btn-qr-trigger"
+            onClick={() => setIsQrModalOpen(true)}
+            title="Hiển thị mã QR phòng để bạn bè quét bằng điện thoại"
+          >
+            📱 Mã QR Phòng
           </button>
           <button
             type="button"
@@ -728,6 +763,44 @@ export default function GroupSession({
               ))}
             </div>
           )}
+
+          {/* Embedded QR Code Invite Card for Projectors / Office Sharing */}
+          <div className="room-qr-invite-strip card-glass">
+            <div className="qr-strip-content">
+              <div className="qr-strip-text">
+                <span className="qr-strip-badge">📱 QUÉT MÃ QR THAM GIA PHÒNG NGAY</span>
+                <h4>Mời Bạn Bè & Đồng Nghiệp Cùng So Khớp Diện Mạo</h4>
+                <p>
+                  Chiếu lên màn hình hoặc đưa cho đồng nghiệp trong phòng. Dùng ứng dụng Camera hoặc Zalo để quét và tự động tham gia phòng <b>{activeRoomId}</b> tức thì!
+                </p>
+                <div className="qr-strip-actions">
+                  <button
+                    type="button"
+                    className={`btn-primary btn-copy-strip ${copyToast ? 'copied' : ''}`}
+                    onClick={handleCopyInviteLink}
+                  >
+                    {copyToast ? '✅ Đã Sao Chép Link!' : '🔗 Sao Chép Link Tham Gia'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setIsQrModalOpen(true)}
+                  >
+                    🔍 Phóng To Mã QR
+                  </button>
+                </div>
+              </div>
+              <div className="qr-strip-code">
+                <QRCodeDisplay
+                  value={getRoomUrl(activeRoomId)}
+                  size={140}
+                  roomName={activeRoomId}
+                  showCopyBtn={false}
+                  showUrlPreview={false}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -978,6 +1051,18 @@ export default function GroupSession({
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Code Popup Modal */}
+      {activeRoomId && (
+        <QRCodeModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          url={getRoomUrl(activeRoomId)}
+          roomName={activeRoomId}
+          title={`Mã QR Tham Gia Phòng: ${activeRoomId}`}
+          subtitle="Dùng Camera điện thoại hoặc Zalo để quét mã QR bên dưới và tự động tham gia phòng"
+        />
       )}
     </div>
   )

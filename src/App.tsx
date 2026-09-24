@@ -3,6 +3,8 @@ import type { FaceLandmarkerResult } from '@mediapipe/tasks-vision'
 import CameraScanner from './components/CameraScanner'
 import ResultPanel from './components/ResultPanel'
 import GroupSession from './components/GroupSession'
+import QRCodeDisplay from './components/QRCodeDisplay'
+import QRCodeModal from './components/QRCodeModal'
 import { analyzeFace } from './services/faceAnalyzer'
 import type { FaceAnalysis, SnapshotData } from './types'
 
@@ -11,6 +13,7 @@ export default function App() {
   const [liveAnalysis, setLiveAnalysis] = useState<FaceAnalysis | null>(null)
   const [snapshotData, setSnapshotData] = useState<SnapshotData | null>(null)
   const [faceFound, setFaceFound] = useState(false)
+  const [isGlobalQrOpen, setIsGlobalQrOpen] = useState(false)
 
   // Auto switch to group mode if URL contains room hash
   useEffect(() => {
@@ -66,6 +69,17 @@ export default function App() {
     <main className="app-container">
       {/* Header Hero Section */}
       <header className="hero-header">
+        <div className="hero-top-tools">
+          <button
+            type="button"
+            className="btn-hero-qr"
+            onClick={() => setIsGlobalQrOpen(true)}
+            title="Quét mã QR để mở ứng dụng trên điện thoại hoặc mời bạn bè"
+          >
+            📱 Quét QR Mở Điện Thoại / Tham Gia
+          </button>
+        </div>
+
         <div className="hero-badge">
           <span className="sparkle">✦</span> FACE FORTUNE AI · NHÂN TƯỚNG HỌC HIỆN ĐẠI <span className="sparkle">✦</span>
         </div>
@@ -148,6 +162,27 @@ export default function App() {
                   <span>•</span>
                   <span>✨ Thẻ May Mắn</span>
                 </div>
+
+                {/* Direct QR Scan Box for Mobile Scanning */}
+                <div className="empty-qr-preview-box">
+                  <div className="empty-qr-badge">📱 QUÉT NHANH BẰNG ĐIỆN THOẠI</div>
+                  <p className="empty-qr-desc">
+                    Mở camera điện thoại quét mã QR bên dưới để mở trang web và tự sướng quét tướng số dễ dàng:
+                  </p>
+                  <div
+                    className="empty-qr-click-wrapper"
+                    onClick={() => setIsGlobalQrOpen(true)}
+                    title="Nhấp để phóng to mã QR"
+                  >
+                    <QRCodeDisplay
+                      value={window.location.href}
+                      size={135}
+                      showCopyBtn={false}
+                      showUrlPreview={false}
+                    />
+                    <span className="empty-qr-zoom-tag">🔍 Bấm để phóng to</span>
+                  </div>
+                </div>
               </div>
             )}
           </section>
@@ -192,6 +227,27 @@ export default function App() {
           </section>
         </div>
       )}
+
+      {/* Floating QR Quick-Open Button */}
+      <button
+        type="button"
+        className="floating-qr-button"
+        onClick={() => setIsGlobalQrOpen(true)}
+        title="Quét mã QR để mở trên điện thoại hoặc chia sẻ phòng"
+        aria-label="Mở mã QR tham gia"
+      >
+        <span className="floating-qr-icon">📱</span>
+        <span className="floating-qr-label">Quét QR</span>
+      </button>
+
+      {/* Global QR Code Modal */}
+      <QRCodeModal
+        isOpen={isGlobalQrOpen}
+        onClose={() => setIsGlobalQrOpen(false)}
+        url={window.location.href}
+        title="Quét Mã QR Để Tham Gia & Mở Trên Điện Thoại"
+        subtitle="Dùng Camera máy ảnh hoặc Zalo trên điện thoại quét mã để truy cập và trải nghiệm ngay"
+      />
 
       <footer className="app-footer">
         <p>© 2026 Face Fortune AI · Trải nghiệm phong thủy diện mạo & công nghệ thị giác máy tính.</p>
