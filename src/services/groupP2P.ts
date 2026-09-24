@@ -1,7 +1,7 @@
 import { joinRoom, selfId } from '@trystero-p2p/mqtt'
 import type { RoomMember, GroupCompatibility } from '../types'
 
-const APP_ID = 'face-fortune-ai-group-v1'
+const APP_ID = 'face-fortune-ai-group-v2'
 
 export interface P2PCallbacks {
   onPeerJoin: (peerId: string) => void
@@ -18,6 +18,22 @@ export function getSelfId(): string {
   return selfId
 }
 
+// Convert any room name (with spaces, Vietnamese accents, symbols) into a consistent reliable topic slug
+export function slugifyRoomId(str: string): string {
+  if (!str) return 'phong-may-man-888'
+  return (
+    str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'd')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'phong-may-man-888'
+  )
+}
+
 export function initP2PRoom(
   roomId: string,
   callbacks: P2PCallbacks,
@@ -29,10 +45,26 @@ export function initP2PRoom(
     } catch (e) {
       console.warn('Error leaving previous room:', e)
     }
+    activeRoom = null
+    memberAction = null
+    syncAction = null
   }
 
-  const cleanRoomId = roomId.trim().toLowerCase().replace(/\s+/g, '-')
-  const room = joinRoom({ appId: APP_ID }, cleanRoomId)
+  const cleanRoomId = slugifyRoomId(roomId)
+  const room = joinRoom(
+    {
+      appId: APP_ID,
+      rtcConfig: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' },
+        ],
+      },
+    },
+    cleanRoomId,
+  )
   activeRoom = room
 
   memberAction = room.makeAction<RoomMember>('memberUpdate')
@@ -43,6 +75,12 @@ export function initP2PRoom(
     // Request peer to send their member data
     if (syncAction) {
       syncAction.send({ from: selfId }, { target: peerId })
+      // Retry sync request after 800ms to guarantee handshake under high network latency
+      setTimeout(() => {
+        if (syncAction && activeRoom) {
+          syncAction.send({ from: selfId }, { target: peerId })
+        }
+      }, 800)
     }
   }
 
@@ -51,11 +89,15 @@ export function initP2PRoom(
   }
 
   memberAction.onMessage = (data: RoomMember, meta: { peerId: string }) => {
-    callbacks.onMemberUpdate(data, meta?.peerId || '')
+    if (data && meta?.peerId) {
+      callbacks.onMemberUpdate(data, meta.peerId)
+    }
   }
 
   syncAction.onMessage = (_data: { from: string }, meta: { peerId: string }) => {
-    callbacks.onSyncRequest(meta?.peerId || '')
+    if (meta?.peerId) {
+      callbacks.onSyncRequest(meta.peerId)
+    }
   }
 
   return {
@@ -75,10 +117,14 @@ export function initP2PRoom(
 
 export function broadcastMemberData(member: RoomMember, targetPeerId?: string) {
   if (memberAction) {
-    if (targetPeerId) {
-      memberAction.send(member, { target: targetPeerId })
-    } else {
-      memberAction.send(member)
+    try {
+      if (targetPeerId) {
+        memberAction.send(member, { target: targetPeerId })
+      } else {
+        memberAction.send(member)
+      }
+    } catch (e) {
+      console.warn('Error broadcasting member data:', e)
     }
   }
 }

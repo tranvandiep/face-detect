@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import type { FaceAnalysis, RoomMember } from '../types'
 import {
   initP2PRoom,
@@ -36,7 +36,7 @@ export default function GroupSession({
       return saved
     }
     const num = Math.floor(1 + Math.random() * 99)
-    return `Nhân Viên PR ${num < 10 ? '0' + num : num}`
+    return `Nhân Viên ${num < 10 ? '0' + num : num}`
   })
   const [userAvatar, setUserAvatar] = useState(() => {
     return (
@@ -52,6 +52,7 @@ export default function GroupSession({
   const [activeTab, setActiveTab] = useState<'members' | 'elements' | 'leaderboard'>('members')
   const [selectedMemberDetail, setSelectedMemberDetail] = useState<RoomMember | null>(null)
   const [copyToast, setCopyToast] = useState(false)
+  const [syncToast, setSyncToast] = useState(false)
 
   // Self member object
   const selfMember = useMemo<RoomMember>(() => {
@@ -67,13 +68,20 @@ export default function GroupSession({
     }
   }, [userName, userAvatar, currentAnalysis, snapshotImageSrc])
 
-  // Check URL hash for direct room invite on mount
+  // Keep a ref to always broadcast the latest selfMember in asynchronous callbacks
+  const selfMemberRef = useRef<RoomMember>(selfMember)
+  useEffect(() => {
+    selfMemberRef.current = selfMember
+  }, [selfMember])
+
+  // Check URL hash for direct room invite on mount and auto-join
   useEffect(() => {
     const hash = window.location.hash
     if (hash.startsWith('#room=')) {
       const roomFromUrl = decodeURIComponent(hash.replace('#room=', '')).trim()
       if (roomFromUrl) {
         setRoomIdInput(roomFromUrl)
+        setActiveRoomId(roomFromUrl)
       }
     }
   }, [])
@@ -84,36 +92,28 @@ export default function GroupSession({
     localStorage.setItem('ff_avatar', userAvatar)
   }, [userName, userAvatar])
 
-  // Handle joining room
-  const handleJoinRoom = useCallback(
-    (targetRoomId: string) => {
-      const cleanId = targetRoomId.trim().toUpperCase().replace(/\s+/g, '-')
-      if (!cleanId) {
-        alert('Vui lòng nhập hoặc chọn mã phòng.')
-        return
-      }
+  // Core P2P room lifecycle
+  useEffect(() => {
+    if (!activeRoomId) return
 
-      setActiveRoomId(cleanId)
-      window.location.hash = `room=${encodeURIComponent(cleanId)}`
+    setMembers({
+      [selfMemberRef.current.id]: selfMemberRef.current,
+    })
 
-      // Initial members map with self
-      setMembers({
-        [selfMember.id]: selfMember,
-      })
-
-      const { leave } = initP2PRoom(cleanId, {
-        onPeerJoin: (peerId) => {
-          // Broadcast our own info to new peer
-          broadcastMemberData(selfMember, peerId)
-        },
-        onPeerLeave: (peerId) => {
-          setMembers((prev) => {
-            const next = { ...prev }
-            delete next[peerId]
-            return next
-          })
-        },
-        onMemberUpdate: (member, peerId) => {
+    const { leave } = initP2PRoom(activeRoomId, {
+      onPeerJoin: (peerId) => {
+        // Send our current member info to newly discovered peer
+        broadcastMemberData(selfMemberRef.current, peerId)
+      },
+      onPeerLeave: (peerId) => {
+        setMembers((prev) => {
+          const next = { ...prev }
+          delete next[peerId]
+          return next
+        })
+      },
+      onMemberUpdate: (member, peerId) => {
+        if (member && peerId) {
           setMembers((prev) => ({
             ...prev,
             [peerId]: {
@@ -122,21 +122,28 @@ export default function GroupSession({
               isSelf: false,
             },
           }))
-        },
-        onSyncRequest: (peerId) => {
-          broadcastMemberData(selfMember, peerId)
-        },
-      })
+        }
+      },
+      onSyncRequest: (peerId) => {
+        broadcastMemberData(selfMemberRef.current, peerId)
+      },
+    })
 
-      // Broadcast self initially
-      broadcastMemberData(selfMember)
+    // Initial broadcast
+    broadcastMemberData(selfMemberRef.current)
 
-      return leave
-    },
-    [selfMember],
-  )
+    // Periodic heartbeat sync every 3.5s to maintain rock-solid state across peers
+    const syncInterval = setInterval(() => {
+      broadcastMemberData(selfMemberRef.current)
+    }, 3500)
 
-  // Broadcast updates whenever selfMember changes (e.g. user just scanned)
+    return () => {
+      clearInterval(syncInterval)
+      leave()
+    }
+  }, [activeRoomId])
+
+  // Broadcast updates whenever selfMember changes (e.g. user just completed face scan)
   useEffect(() => {
     if (activeRoomId) {
       setMembers((prev) => ({
@@ -147,11 +154,32 @@ export default function GroupSession({
     }
   }, [selfMember, activeRoomId])
 
+  // Handle joining room
+  const handleJoinRoom = (targetRoomId: string) => {
+    const cleanId = targetRoomId.trim()
+    if (!cleanId) {
+      alert('Vui lòng nhập hoặc chọn mã phòng.')
+      return
+    }
+
+    setActiveRoomId(cleanId)
+    window.location.hash = `room=${encodeURIComponent(cleanId)}`
+  }
+
   // Leave room
   const handleLeaveRoom = () => {
     setActiveRoomId(null)
     setMembers({})
     window.location.hash = ''
+  }
+
+  // Manual re-sync button
+  const handleManualSync = () => {
+    if (activeRoomId) {
+      broadcastMemberData(selfMemberRef.current)
+      setSyncToast(true)
+      setTimeout(() => setSyncToast(false), 2000)
+    }
   }
 
   // Copy share invite link
@@ -338,6 +366,14 @@ export default function GroupSession({
         <div className="room-actions">
           <button
             type="button"
+            className="btn-action-pill"
+            onClick={handleManualSync}
+            title="Đồng bộ lại kết quả với tất cả thành viên"
+          >
+            {syncToast ? '🔄 Đã Đồng Bộ!' : '🔄 Làm Mới'}
+          </button>
+          <button
+            type="button"
             className={`btn-action-pill ${copyToast ? 'copied' : ''}`}
             onClick={handleCopyInviteLink}
             title="Sao chép đường dẫn mời bạn bè vào phòng"
@@ -415,17 +451,15 @@ export default function GroupSession({
             {memberList.map((m) => (
               <div
                 key={m.id}
-                className={`member-card ${m.isSelf ? 'is-self' : ''} ${
-                  m.analysis ? `element-border-${m.analysis.nguHanh.element.toLowerCase()}` : ''
-                }`}
+                className={`member-card ${m.isSelf ? 'is-self' : ''} ${m.analysis ? `element-border-${m.analysis.nguHanh.element.toLowerCase()}` : ''
+                  }`}
               >
                 <div className="member-card-header">
                   <div className="member-avatar-wrap">
                     <span className="member-avatar">{m.avatar}</span>
                     <span
-                      className={`member-status-dot ${
-                        m.analysis ? 'status-done' : 'status-waiting'
-                      }`}
+                      className={`member-status-dot ${m.analysis ? 'status-done' : 'status-waiting'
+                        }`}
                       title={m.analysis ? 'Đã có quẻ tướng số' : 'Đang chờ quét'}
                     />
                   </div>
