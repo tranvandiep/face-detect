@@ -47,6 +47,7 @@ export default function GroupSession({
   // Room state
   const [members, setMembers] = useState<Record<string, RoomMember>>({})
   const [activeTab, setActiveTab] = useState<'members' | 'elements' | 'leaderboard'>('members')
+  const [memberViewMode, setMemberViewMode] = useState<'table' | 'cards'>('table')
   const [selectedMemberDetail, setSelectedMemberDetail] = useState<RoomMember | null>(null)
   const [copyToast, setCopyToast] = useState(false)
   const [syncToast, setSyncToast] = useState(false)
@@ -441,76 +442,292 @@ export default function GroupSession({
         </button>
       </div>
 
-      {/* TAB 1: MEMBERS LIST */}
+      {/* TAB 1: MEMBERS LIST & COMPARISON TABLE */}
       {activeTab === 'members' && (
         <div className="room-tab-content animate-fade-in">
-          <div className="members-grid">
-            {memberList.map((m) => (
-              <div
-                key={m.id}
-                className={`member-card ${m.isSelf ? 'is-self' : ''} ${m.analysis ? `element-border-${m.analysis.nguHanh.element.toLowerCase()}` : ''
-                  }`}
-              >
-                <div className="member-card-header">
-                  <div className="member-avatar-wrap">
-                    <span className="member-avatar">{m.avatar}</span>
-                    <span
-                      className={`member-status-dot ${m.analysis ? 'status-done' : 'status-waiting'
-                        }`}
-                      title={m.analysis ? 'Đã có quẻ tướng số' : 'Đang chờ quét'}
-                    />
-                  </div>
-                  <div className="member-names">
-                    <h4>
-                      {m.name} {m.isSelf && <span className="you-tag">(Bạn)</span>}
-                    </h4>
-                    <span className="member-time">
-                      {m.analysis
-                        ? `Mệnh ${m.analysis.nguHanh.element} · ${m.analysis.faceShape}`
-                        : 'Đang tham gia...'}
+          {/* Top 1 Best Matched Pair Banner */}
+          {leaderboards.pairs.length > 0 ? (
+            <div className="top-match-hero-banner">
+              <div className="top-match-badge-row">
+                <span className="top-match-badge">
+                  👑 CẶP ĐÔI TƯƠNG SINH & HÒA HỢP NHẤT PHÒNG
+                </span>
+                <span className="top-match-score-pill">
+                  Độ Hợp: <b>{leaderboards.pairs[0].score}%</b> · {leaderboards.pairs[0].relation}
+                </span>
+              </div>
+
+              <div className="top-match-duo">
+                <div className="match-person-box">
+                  <span className="match-avatar">{leaderboards.pairs[0].person1.avatar}</span>
+                  <div className="match-person-meta">
+                    <b>
+                      {leaderboards.pairs[0].person1.name}{' '}
+                      {leaderboards.pairs[0].person1.isSelf && <span className="you-tag">(Bạn)</span>}
+                    </b>
+                    <span className="match-el-tag">
+                      Mệnh {leaderboards.pairs[0].person1.analysis?.nguHanh.element} · {leaderboards.pairs[0].person1.analysis?.faceShape}
                     </span>
                   </div>
                 </div>
 
-                {m.analysis ? (
-                  <div className="member-analysis-summary">
-                    <div className="member-que-title">
-                      🔮 {m.analysis.fortune.queBoi}
-                    </div>
+                <div className="match-heart-center">
+                  <span className="heart-icon">💞</span>
+                  <span className="relation-text">{leaderboards.pairs[0].relation}</span>
+                </div>
 
-                    <div className="member-metrics-chips">
-                      <span className="metric-chip">
-                        📐 Tỉ lệ vàng: <b>{m.analysis.symmetry.goldenRatioScore}%</b>
-                      </span>
-                      <span className="metric-chip">
-                        😄 Nụ cười: <b>{m.analysis.smileScore}%</b>
-                      </span>
-                      <span className="metric-chip">
-                        ⚖️ Cân đối: <b>{m.analysis.symmetry.symmetryScore}%</b>
-                      </span>
-                    </div>
-
-                    <p className="member-advice-short">
-                      💡 {m.analysis.fortune.dailyAdvice}
-                    </p>
-
-                    <button
-                      type="button"
-                      className="btn-view-member"
-                      onClick={() => setSelectedMemberDetail(m)}
-                    >
-                      📜 Xem Toàn Bộ Tướng Số
-                    </button>
+                <div className="match-person-box">
+                  <span className="match-avatar">{leaderboards.pairs[0].person2.avatar}</span>
+                  <div className="match-person-meta">
+                    <b>
+                      {leaderboards.pairs[0].person2.name}{' '}
+                      {leaderboards.pairs[0].person2.isSelf && <span className="you-tag">(Bạn)</span>}
+                    </b>
+                    <span className="match-el-tag">
+                      Mệnh {leaderboards.pairs[0].person2.analysis?.nguHanh.element} · {leaderboards.pairs[0].person2.analysis?.faceShape}
+                    </span>
                   </div>
-                ) : (
-                  <div className="member-waiting-box">
-                    <div className="waiting-spinner" />
-                    <span>Chưa quét diện mạo...</span>
-                  </div>
-                )}
+                </div>
               </div>
-            ))}
+
+              <p className="top-match-description">
+                ✨ {leaderboards.pairs[0].description}
+              </p>
+            </div>
+          ) : (
+            <div className="top-match-waiting-banner">
+              <span className="waiting-orb">🔮</span>
+              <div>
+                <b>Tìm Cặp Đôi Tương Sinh Hòa Hợp Nhất Phòng</b>
+                <p>
+                  Cần ít nhất 2 thành viên hoàn thành quét khuôn mặt để AI tự động so khớp ngũ hành và vinh danh cặp đôi đại cát nhất!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* View Mode Toggle Controls */}
+          <div className="members-view-controls">
+            <span className="view-title">
+              📋 Danh Sách So Sánh Thành Viên ({memberList.length})
+            </span>
+            <div className="view-mode-toggles">
+              <button
+                type="button"
+                className={`view-toggle-btn ${memberViewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setMemberViewMode('table')}
+              >
+                📊 Bảng So Sánh
+              </button>
+              <button
+                type="button"
+                className={`view-toggle-btn ${memberViewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setMemberViewMode('cards')}
+              >
+                🎴 Thẻ Chi Tiết
+              </button>
+            </div>
           </div>
+
+          {/* DẠNG BẢNG SO SÁNH (TABLE VIEW) */}
+          {memberViewMode === 'table' ? (
+            <div className="members-table-wrapper">
+              <table className="members-compare-table">
+                <thead>
+                  <tr>
+                    <th>Thành Viên</th>
+                    <th>Bản Mệnh & Dáng Mặt</th>
+                    <th>Tỉ Lệ Vàng Phi</th>
+                    <th>Nụ Cười</th>
+                    <th>Độ Cân Đối</th>
+                    <th>Quẻ Tử Vi Hôm Nay</th>
+                    <th>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {memberList.map((m) => (
+                    <tr key={m.id} className={m.isSelf ? 'row-self' : ''}>
+                      <td className="col-member">
+                        <div className="table-member-info">
+                          <span className="table-av">{m.avatar}</span>
+                          <div>
+                            <b className="table-name">
+                              {m.name} {m.isSelf && <span className="you-tag">(Bạn)</span>}
+                            </b>
+                            <span className={`table-status-label ${m.analysis ? 'done' : 'waiting'}`}>
+                              {m.analysis ? '🟢 Đã có quẻ' : '⏳ Chờ quét...'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="col-element">
+                        {m.analysis ? (
+                          <span
+                            className={`table-el-badge el-${m.analysis.nguHanh.element.toLowerCase()}`}
+                          >
+                            Mệnh {m.analysis.nguHanh.element} · {m.analysis.faceShape}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+
+                      <td className="col-score">
+                        {m.analysis ? (
+                          <div className="score-cell">
+                            <span className="score-val">{m.analysis.symmetry.goldenRatioScore}%</span>
+                            <div className="mini-progress-track">
+                              <div
+                                className="mini-progress-fill gold"
+                                style={{ width: `${m.analysis.symmetry.goldenRatioScore}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+
+                      <td className="col-score">
+                        {m.analysis ? (
+                          <div className="score-cell">
+                            <span className="score-val">{m.analysis.smileScore}%</span>
+                            <div
+                              className="mini-progress-track"
+                            >
+                              <div
+                                className="mini-progress-fill purple"
+                                style={{ width: `${m.analysis.smileScore}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+
+                      <td className="col-score">
+                        {m.analysis ? (
+                          <div className="score-cell">
+                            <span className="score-val">{m.analysis.symmetry.symmetryScore}%</span>
+                            <div
+                              className="mini-progress-track"
+                            >
+                              <div
+                                className="mini-progress-fill emerald"
+                                style={{ width: `${m.analysis.symmetry.symmetryScore}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+
+                      <td className="col-fortune">
+                        {m.analysis ? (
+                          <div className="table-fortune-text">
+                            <b className="fortune-title-sm">🔮 {m.analysis.fortune.queBoi}</b>
+                            <span className="fortune-advice-sm">💡 {m.analysis.fortune.dailyAdvice}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted italic">Đang chờ quét diện mạo...</span>
+                        )}
+                      </td>
+
+                      <td className="col-action">
+                        {m.analysis ? (
+                          <button
+                            type="button"
+                            className="btn-table-view"
+                            onClick={() => setSelectedMemberDetail(m)}
+                          >
+                            📜 Xem Quẻ
+                          </button>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            /* DẠNG THẺ CHI TIẾT (CARDS VIEW) */
+            <div className="members-grid">
+              {memberList.map((m) => (
+                <div
+                  key={m.id}
+                  className={`member-card ${m.isSelf ? 'is-self' : ''} ${
+                    m.analysis
+                      ? `element-border-${m.analysis.nguHanh.element.toLowerCase()}`
+                      : ''
+                  }`}
+                >
+                  <div className="member-card-header">
+                    <div className="member-avatar-wrap">
+                      <span className="member-avatar">{m.avatar}</span>
+                      <span
+                        className={`member-status-dot ${
+                          m.analysis ? 'status-done' : 'status-waiting'
+                        }`}
+                        title={m.analysis ? 'Đã có quẻ tướng số' : 'Đang chờ quét'}
+                      />
+                    </div>
+                    <div className="member-names">
+                      <h4>
+                        {m.name} {m.isSelf && <span className="you-tag">(Bạn)</span>}
+                      </h4>
+                      <span className="member-time">
+                        {m.analysis
+                          ? `Mệnh ${m.analysis.nguHanh.element} · ${m.analysis.faceShape}`
+                          : 'Đang tham gia...'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {m.analysis ? (
+                    <div className="member-analysis-summary">
+                      <div className="member-que-title">
+                        🔮 {m.analysis.fortune.queBoi}
+                      </div>
+
+                      <div className="member-metrics-chips">
+                        <span className="metric-chip">
+                          📐 Tỉ lệ vàng: <b>{m.analysis.symmetry.goldenRatioScore}%</b>
+                        </span>
+                        <span className="metric-chip">
+                          😄 Nụ cười: <b>{m.analysis.smileScore}%</b>
+                        </span>
+                        <span className="metric-chip">
+                          ⚖️ Cân đối: <b>{m.analysis.symmetry.symmetryScore}%</b>
+                        </span>
+                      </div>
+
+                      <p className="member-advice-short">
+                        💡 {m.analysis.fortune.dailyAdvice}
+                      </p>
+
+                      <button
+                        type="button"
+                        className="btn-view-member"
+                        onClick={() => setSelectedMemberDetail(m)}
+                      >
+                        📜 Xem Toàn Bộ Tướng Số
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="member-waiting-box">
+                      <div className="waiting-spinner" />
+                      <span>Chưa quét diện mạo...</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
