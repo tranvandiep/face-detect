@@ -11,11 +11,8 @@ import ResultPanel from './ResultPanel'
 const AVATARS = ['🦊', '🐯', '🐉', '🐱', '🦁', '🐼', '🦄', '🦅', '👑', '💎', '🔮', '✨']
 
 const DEFAULT_ROOM_SUGGESTIONS = [
-  'React Plus',
   'TRAN VAN DIEP',
   'PHONG-MAY-MAN-888',
-  'HOI-BAN-THAN-777',
-  'CONG-TY-TAI-LOC',
 ]
 
 type Props = {
@@ -32,7 +29,7 @@ export default function GroupSession({
   // Lobby form state
   const [userName, setUserName] = useState(() => {
     const saved = localStorage.getItem('ff_username')
-    if (saved && !saved.startsWith('Khách Quý')) {
+    if (saved && !saved.startsWith('Khách Quý') && !saved.startsWith('Nhân Viên PR')) {
       return saved
     }
     const num = Math.floor(1 + Math.random() * 99)
@@ -291,7 +288,7 @@ export default function GroupSession({
                 className="input-modern"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
-                placeholder="Ví dụ: Nhân Viên PR 01"
+                placeholder="Ví dụ: Nhân Viên 01"
                 maxLength={24}
               />
             </div>
