@@ -11,10 +11,10 @@ import ResultPanel from './ResultPanel'
 const AVATARS = ['🦊', '🐯', '🐉', '🐱', '🦁', '🐼', '🦄', '🦅', '👑', '💎', '🔮', '✨']
 
 const DEFAULT_ROOM_SUGGESTIONS = [
+  'React Plus',
+  'TRAN VAN DIEP',
   'PHONG-MAY-MAN-888',
   'HOI-BAN-THAN-777',
-  'XEM-TUONG-SO-999',
-  'GIA-DINH-HANH-PHUC',
   'CONG-TY-TAI-LOC',
 ]
 
@@ -280,7 +280,7 @@ export default function GroupSession({
                 className="input-modern uppercase"
                 value={roomIdInput}
                 onChange={(e) => setRoomIdInput(e.target.value)}
-                placeholder="Ví dụ: PHONG-MAY-MAN-888"
+                placeholder="Ví dụ: React Plus hoặc TRAN VAN DIEP"
               />
             </div>
 
