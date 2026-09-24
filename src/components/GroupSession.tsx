@@ -31,10 +31,12 @@ export default function GroupSession({
 }: Props) {
   // Lobby form state
   const [userName, setUserName] = useState(() => {
-    return (
-      localStorage.getItem('ff_username') ||
-      `Khách Quý ${Math.floor(100 + Math.random() * 900)}`
-    )
+    const saved = localStorage.getItem('ff_username')
+    if (saved && !saved.startsWith('Khách Quý')) {
+      return saved
+    }
+    const num = Math.floor(1 + Math.random() * 99)
+    return `Nhân Viên PR ${num < 10 ? '0' + num : num}`
   })
   const [userAvatar, setUserAvatar] = useState(() => {
     return (
@@ -261,7 +263,7 @@ export default function GroupSession({
                 className="input-modern"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
-                placeholder="Nhập tên của bạn..."
+                placeholder="Ví dụ: Nhân Viên PR 01"
                 maxLength={24}
               />
             </div>
